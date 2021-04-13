@@ -1,0 +1,15 @@
+artifact_uri: file:///home/toshiki/PycharmProjects/mlflow/mlruns/0/3ab6e27ddcb14a5c88a263d4b4e427a3/artifacts
+end_time: 1618286961187
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: active
+name: ''
+run_id: 3ab6e27ddcb14a5c88a263d4b4e427a3
+run_uuid: 3ab6e27ddcb14a5c88a263d4b4e427a3
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1618286961177
+status: 3
+tags: []
+user_id: toshiki
