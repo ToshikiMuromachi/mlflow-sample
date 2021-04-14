@@ -1,4 +1,4 @@
-#!/home/toshiki/vscode/mlflow/.venv/bin/python
+#!/home/toshiki/PycharmProjects/mlflow/.venv/bin/python3
 # EASY-INSTALL-ENTRY-SCRIPT: 'databricks-cli==0.14.3','console_scripts','databricks'
 __requires__ = 'databricks-cli==0.14.3'
 import re

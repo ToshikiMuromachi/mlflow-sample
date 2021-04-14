@@ -1,33 +1,57 @@
+from __future__ import print_function
 import argparse
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
+from torchvision import datasets, transforms
+from torch.optim.lr_scheduler import StepLR
 import mlflow
-import mlflow.pytorch
 import datetime
-from dataset import generate_loader
-from models import Net
-from utils import train
+
+from src.pytorch.models import Net
+from src.pytorch.dataloader import dataloader
+from src.pytorch.plot import plot_learning
+from src.pytorch.learning import train, valid, learning
+
 
 def make_parse():
     """
     コマンドライン引数を受け取る
     """
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--batch_size', default=256, type=int, help='batch size')
-    parser.add_argument('--epochs', default=50, type=int, help='epochs')
-    parser.add_argument('--lr', default=5e-3, type=float, help='learning_rate')
-    parser.add_argument('--exp_name', default=datetime.datetime.now(), type=str, help='experiment_name')
+    parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
+    parser.add_argument('--batch-size', type=int, default=64, metavar='N',
+                        help='input batch size for training (default: 64)')
+    parser.add_argument('--test-batch-size', type=int, default=1000, metavar='N',
+                        help='input batch size for testing (default: 1000)')
+    parser.add_argument('--epochs', type=int, default=14, metavar='N',
+                        help='number of epochs to train (default: 14)')
+    parser.add_argument('--lr', type=float, default=1.0, metavar='LR',
+                        help='learning rate (default: 1.0)')
+    parser.add_argument('--gamma', type=float, default=0.7, metavar='M',
+                        help='Learning rate step gamma (default: 0.7)')
+    parser.add_argument('--no-cuda', action='store_true', default=False,
+                        help='disables CUDA training')
+    parser.add_argument('--dry-run', action='store_true', default=False,
+                        help='quickly check a single pass')
+    parser.add_argument('--seed', type=int, default=1, metavar='S',
+                        help='random seed (default: 1)')
+    parser.add_argument('--log-interval', type=int, default=10, metavar='N',
+                        help='how many batches to wait before logging training status')
+    parser.add_argument('--save-model', action='store_true', default=False,
+                        help='For Saving the current Model')
+    parser.add_argument('--exp_name', default=str(datetime.datetime.now()), type=str, help='experiment_name')
     return parser
 
 
 def main():
-    """
-    実行関数
-    """
-    #コマンドライン引数
+    # Training settings
     args = make_parse().parse_args()
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    use_cuda = not args.no_cuda and torch.cuda.is_available()
+
+    torch.manual_seed(args.seed)
+
+    device = torch.device("cuda" if use_cuda else "cpu")
 
     # MLflow 保存先/実験名
     tracking_uri = "../../mlruns"
@@ -36,43 +60,48 @@ def main():
     mlflow.set_experiment(experiment_name)
 
     # data_loader
-    train_loader, test_loader = generate_loader(args.batch_size)
+    train_loader, test_loader = dataloader(args, device)
 
-    # model
-    model = Net()
+    model = Net().to(device)
+    optimizer = optim.Adadelta(model.parameters(), lr=args.lr)
 
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(model.parameters(), lr=args.lr)
-    scheduler = optim.lr_scheduler.MultiStepLR(
-        optimizer,
-        milestones=[int(args.epochs*0.8), int(args.epochs*0.9)],
-        gamma=0.1
-    )
+    scheduler = StepLR(optimizer, step_size=1, gamma=args.gamma)
 
-    model = model.to(device)
-
-    # 学習、精度評価 
-    results = train(
-        epochs=args.epochs, 
-        model=model, 
+    # 学習、精度評価
+    train_loss_list, valid_loss_list = learning(
+        args=args,
+        epochs=args.epochs,
+        model=model,
         train_loader=train_loader,
         test_loader=test_loader,
-        criterion=criterion,
+        # criterion=criterion,
         optimizer=optimizer,
         scheduler=scheduler,
         device=device
     )
 
+    # 学習曲線
+    plot_learning(train_loss_list, valid_loss_list, '../../data/output/loss.png')
+
     # mlflow
-    with mlflow.start_run() as run:    # runIDを発行する
+    with mlflow.start_run() as run:  # runIDを発行する
 
-        for key, value in results.items():    # メトリックを記録する(ステップごとに)
-            mlflow.log_metric(key, value)
+        # 時間で経過する数値を記録する(loss等)
+        for idx, loss in enumerate(train_loss_list, 1):
+            mlflow.log_metric("train_loss", loss, idx)
 
-        for key, value in vars(args).items():    # パラメータを記録する (key-value pair)
+        for idx, loss in enumerate(valid_loss_list, 1):
+            mlflow.log_metric("valid_loss", loss, idx)
+
+        # pngファイルを記録
+        mlflow.log_artifact(local_path='../../data/output/loss.png')
+
+        # パラメータを記録 (key-value pair)
+        for key, value in vars(args).items():
             mlflow.log_param(key, value)
 
-        mlflow.pytorch.log_model(model, 'model')     # 生成物を記録する (output file)
+        # mlflow.pytorch.log_model(model, 'model')  # PyTorchモデルを現在実行中のMLflowアーティファクトとしてログに記録
+
 
 if __name__ == '__main__':
     main()

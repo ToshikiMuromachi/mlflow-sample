@@ -12,8 +12,8 @@ mlflow.log_metric("foo", 4, step=2)
 mlflow.log_metric("foo", 6, step=3)
 
 # 生成物を記録する (output file)
-with open("./output.txt", "w") as f:
+with open("../data/output/output.txt", "w") as f:
     f.write("Hello world!")
-mlflow.log_artifact("./output.txt")
+mlflow.log_artifact("../data/output/output.txt")
 
 mlflow.end_run()

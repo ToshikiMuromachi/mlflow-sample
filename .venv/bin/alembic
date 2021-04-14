@@ -1,4 +1,4 @@
-#!/home/toshiki/vscode/mlflow/.venv/bin/python
+#!/home/toshiki/PycharmProjects/mlflow/.venv/bin/python3
 # EASY-INSTALL-ENTRY-SCRIPT: 'alembic==1.4.1','console_scripts','alembic'
 __requires__ = 'alembic==1.4.1'
 import re
