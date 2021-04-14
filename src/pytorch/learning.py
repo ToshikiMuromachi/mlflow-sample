@@ -2,14 +2,14 @@ import torch
 import torch.nn.functional as F
 
 
-def train(args, model, device, train_loader, optimizer, epoch):
+def train(args, model, device, train_loader, criterion, optimizer, epoch):
     model.train()
     running_loss = 0
     for batch_idx, (data, target) in enumerate(train_loader):
         data, target = data.to(device), target.to(device)
         optimizer.zero_grad()
         output = model(data)
-        loss = F.nll_loss(output, target)  # Negative Log Likelihood(NLL) Loss
+        loss = criterion(output, target)
         loss.backward()
         optimizer.step()
         running_loss += loss.item()
@@ -27,7 +27,7 @@ def train(args, model, device, train_loader, optimizer, epoch):
     return train_loss
 
 
-def valid(model, device, test_loader):
+def valid(model, device, test_loader, criterion):
     model.eval()
     correct = 0
     running_loss = 0
@@ -35,7 +35,7 @@ def valid(model, device, test_loader):
         for data, target in test_loader:
             data, target = data.to(device), target.to(device)
             output = model(data)
-            loss = F.nll_loss(output, target)
+            loss = criterion(output, target)
             running_loss += loss.item()
             pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
             correct += pred.eq(target.view_as(pred)).sum().item()
@@ -48,13 +48,13 @@ def valid(model, device, test_loader):
     return valid_loss
 
 
-def learning(args, epochs, model, train_loader, test_loader, optimizer, scheduler, device):
+def learning(args, epochs, model, train_loader, test_loader, criterion, optimizer, scheduler, device):
     result = dict()
     train_loss_list = []
     valid_loss_list = []
     for epoch in range(1, epochs + 1):
-        train_loss = train(args, model, device, train_loader, optimizer, epoch)
-        valid_loss = valid(model, device, test_loader)
+        train_loss = train(args, model, device, train_loader, criterion, optimizer, epoch)
+        valid_loss = valid(model, device, test_loader, criterion)
         scheduler.step()
 
         train_loss_list.append(train_loss)

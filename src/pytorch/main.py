@@ -8,6 +8,8 @@ from torchvision import datasets, transforms
 from torch.optim.lr_scheduler import StepLR
 import mlflow
 import datetime
+import os
+from pathlib import Path
 
 from src.pytorch.models import Net
 from src.pytorch.dataloader import dataloader
@@ -54,7 +56,7 @@ def main():
     device = torch.device("cuda" if use_cuda else "cpu")
 
     # MLflow 保存先/実験名
-    tracking_uri = "../../mlruns"
+    tracking_uri = os.path.join(Path('__file__').resolve().parent.parent.parent, "mlruns")
     mlflow.set_tracking_uri(tracking_uri)
     experiment_name = args.exp_name
     mlflow.set_experiment(experiment_name)
@@ -64,7 +66,7 @@ def main():
 
     model = Net().to(device)
     optimizer = optim.Adadelta(model.parameters(), lr=args.lr)
-
+    criterion = F.nll_loss    # Negative Log Likelihood(NLL) Loss
     scheduler = StepLR(optimizer, step_size=1, gamma=args.gamma)
 
     # 学習、精度評価
@@ -74,14 +76,15 @@ def main():
         model=model,
         train_loader=train_loader,
         test_loader=test_loader,
-        # criterion=criterion,
+        criterion=criterion,
         optimizer=optimizer,
         scheduler=scheduler,
         device=device
     )
 
     # 学習曲線
-    plot_learning(train_loss_list, valid_loss_list, '../../data/output/loss.png')
+    plot_learning(train_loss_list, valid_loss_list,
+                  os.path.join(Path('__file__').resolve().parent.parent.parent, 'data/output/loss.png'))
 
     # mlflow
     with mlflow.start_run() as run:  # runIDを発行する
@@ -94,7 +97,8 @@ def main():
             mlflow.log_metric("valid_loss", loss, idx)
 
         # pngファイルを記録
-        mlflow.log_artifact(local_path='../../data/output/loss.png')
+        mlflow.log_artifact(local_path=os.path.join(Path('__file__').resolve().parent.parent.parent,
+                                                    'data/output/loss.png'))
 
         # パラメータを記録 (key-value pair)
         for key, value in vars(args).items():
